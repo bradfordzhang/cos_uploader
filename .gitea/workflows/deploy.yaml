@@ -1,0 +1,30 @@
+name: deploy
+on: [push]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      - name: Setup ssh key
+        env:
+          sshkey: ${{ secrets.ID_ED25519 }}
+        run: |
+          echo "StrictHostKeyChecking no" >> /etc/ssh/ssh_config
+          mkdir ~/.ssh
+          echo "$sshkey" > ~/.ssh/id_ed25519
+          chmod 400 ~/.ssh/id_ed25519
+      - name: Build
+        run: |
+          go env -w GO111MODULE=auto
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o cos_uploader
+      - name: Deploy to server
+        env:
+          SERVER_DOMAIN: ${{ secrets.SERVER_DOMAIN }}
+          SERVER_IP: ${{ secrets.SERER_IP }}
+        run: scp cos_uploader root@$SERVER_DOMAIN:~/bw_backup
